@@ -19,7 +19,7 @@ const blogPosts = [
             
             <ul>
                 <li><strong>Người lớn tuổi:</strong> Nên chọn các mẫu hộp truyền thống với họa tiết như song hạc, lân vũ, sen phú quý... thể hiện sự tôn kính.</li>
-                <li><strong>Đối tác kinh doanh:</strong> Hộp có thiết kế sang trọng như ngũ long nguyệt hội, lam cúc với số lượng bánh 4-6 chiếc.</li>
+                <li><strong>Đối tác kinh doanh:</strong> Hộp có thiết kế sang trọng như ngũ long Nguyệt   hội, lam cúc với số lượng bánh 4-6 chiếc.</li>
                 <li><strong>Bạn bè, người thân:</strong> Có thể linh hoạt với các mẫu hiện đại, trẻ trung hoặc mẫu truyền thống tùy sở thích.</li>
                 <li><strong>Trẻ em:</strong> Hộp quà với màu sắc tươi sáng, họa tiết vui nhộn như hộp quà 1.6 cho bé.</li>
             </ul>
@@ -31,7 +31,7 @@ const blogPosts = [
             <ul>
                 <li><strong>Ngân sách thấp:</strong> Hộp 1-2 bánh hoặc hộp sen phú quý 4 bánh giá rẻ (từ 4.000đ đến 18.000đ).</li>
                 <li><strong>Ngân sách trung bình:</strong> Hộp 4 bánh như hộp liên ngư, hộp lân vũ (từ 25.000đ đến 34.000đ).</li>
-                <li><strong>Ngân sách cao:</strong> Hộp 6 bánh cao cấp như hộp ngũ long nguyệt hội, hộp lam cúc (từ 35.000đ trở lên).</li>
+                <li><strong>Ngân sách cao:</strong> Hộp 6 bánh cao cấp như hộp ngũ long Nguyệt   hội, hộp lam cúc (từ 35.000đ trở lên).</li>
             </ul>
             
             <h3>3. Lựa chọn phụ kiện đi kèm</h3>
@@ -96,7 +96,7 @@ const blogPosts = [
             
             <ul>
                 <li><strong>Người lớn tuổi:</strong> Họa tiết truyền thống như hoa sen, song hạc, lân vũ...</li>
-                <li><strong>Đối tác kinh doanh:</strong> Thiết kế thanh lịch, trang nhã như mẫu ngũ long nguyệt hội, lam cúc...</li>
+                <li><strong>Đối tác kinh doanh:</strong> Thiết kế thanh lịch, trang nhã như mẫu ngũ long Nguyệt   hội, lam cúc...</li>
                 <li><strong>Bạn bè, đồng nghiệp:</strong> Có thể chọn mẫu hiện đại, trẻ trung.</li>
                 <li><strong>Trẻ em:</strong> Họa tiết vui nhộn, nhiều màu sắc.</li>
             </ul>

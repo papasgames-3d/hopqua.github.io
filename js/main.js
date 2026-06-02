@@ -8,88 +8,93 @@ function renderPage(page) {
     const productListElement = document.getElementById('product-list');
     const paginationElement = document.getElementById('pagination');
     if (!featuredProducts.length) return;
-    // Tính toán sản phẩm cho trang hiện tại
+
     const startIdx = (currentPage - 1) * productsPerPage;
     const endIdx = startIdx + productsPerPage;
     const productsToShow = featuredProducts.slice(startIdx, endIdx);
-    // Xóa sản phẩm cũ
+
     productListElement.innerHTML = '';
-    // Hiển thị sản phẩm mới
-    displayProducts(productListElement, productsToShow);
-    // Hiển thị pagination
+    displayProducts(productListElement, productsToShow, startIdx);
     renderPagination(paginationElement, featuredProducts.length, currentPage, productsPerPage);
-    
-    // Cuộn lên phần sản phẩm nổi bật
+
     const featuredSection = document.querySelector('.featured-products');
     if (featuredSection) {
-        featuredSection.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start' 
+        featuredSection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
         });
     }
 }
 
-function renderPagination(container, totalProducts, currentPage, productsPerPage) {
-    const totalPages = Math.ceil(totalProducts / productsPerPage);
+function renderPagination(container, totalProducts, page, perPage) {
+    const totalPages = Math.ceil(totalProducts / perPage);
     if (totalPages <= 1) {
         container.innerHTML = '';
         return;
     }
     let html = '';
     for (let i = 1; i <= totalPages; i++) {
-        html += `<button class="pagination-btn${i === currentPage ? ' active' : ''}" onclick="renderPage(${i})">${i}</button> `;
+        html += `<button class="pagination-btn${i === page ? ' active' : ''}" onclick="renderPage(${i})">${i}</button> `;
     }
     container.innerHTML = html;
 }
 
-// Gắn hàm vào window để gọi từ HTML onclick
 window.renderPage = renderPage;
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Hiển thị danh sách sản phẩm trên trang chủ
     const productListElement = document.getElementById('product-list');
-    
-    // Kiểm tra nếu đang ở trang chủ
+
     if (productListElement) {
-        featuredProducts = getFeaturedProducts(9999); // Lấy tất cả sản phẩm nổi bật theo mùa
-        
+        featuredProducts = getFeaturedProducts(9999);
         renderPage(1);
+
+        if (featuredProducts[0] && featuredProducts[0].thumbnail) {
+            const link = document.createElement('link');
+            link.rel = 'preload';
+            link.as = 'image';
+            link.href = getThumbUrl(featuredProducts[0].thumbnail);
+            document.head.appendChild(link);
+        }
     }
 });
 
-// Hàm hiển thị danh sách sản phẩm
-function displayProducts(container, productsToDisplay = null) {
-    // Sử dụng sản phẩm được truyền vào hoặc tất cả sản phẩm
+function displayProducts(container, productsToDisplay, globalStartIndex = 0) {
     const productsToShow = productsToDisplay || getAllProducts();
-    
-    productsToShow.forEach((product) => {
-        // Dùng thumbnail chính để tránh request ảnh ngẫu nhiên không tồn tại.
-        const randomImage = product.thumbnail;
-        
+
+    productsToShow.forEach((product, localIndex) => {
+        const globalIndex = globalStartIndex + localIndex;
+        const cardThumb = getThumbUrl(product.thumbnail);
+        const isPriority = globalIndex < 4;
+
         const productCard = document.createElement('div');
         productCard.className = 'product-card';
-        
-        // Thêm class theo mùa để styling
+
         if (product.season) {
             productCard.classList.add(`season-${product.season.replace(/\s+/g, '-')}`);
         }
-        
-        // Tạo thumbnails thông minh dựa trên loại sản phẩm
+
         const thumbnails = getProductThumbnailImages(product);
         const thumbnailsHtml = thumbnails
-            .map((src) => `<img src="${src}" alt="${product.name}" loading="lazy" decoding="async">`)
+            .map((src) => {
+                const thumbSrc = getThumbUrl(src);
+                return `<img src="${thumbSrc}" alt="" width="50" height="50" loading="lazy" decoding="async" aria-hidden="true">`;
+            })
             .join('');
-        
-        // Thêm badge theo mùa nếu có
-        const seasonBadge = product.season ? `<span class="season-badge season-${product.season.replace(' ', '-')}">${product.season === 'trung thu' ? 'Trung Thu' : 'Tết'}</span>` : '';
-        
+
+        const seasonBadge = product.season
+            ? `<span class="season-badge season-${product.season.replace(' ', '-')}">${product.season === 'trung thu' ? 'Trung Thu' : 'Tết'}</span>`
+            : '';
+
+        const loadingAttr = isPriority ? 'eager' : 'lazy';
+        const fetchPriority = isPriority ? ' fetchpriority="high"' : '';
+
         productCard.innerHTML = `
             <a href="product.html?id=${product.id}">
                 <div class="product-image-container">
-                    <img src="${randomImage}" alt="${product.name}" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='${product.thumbnail}';">
+                    <img src="${cardThumb}" alt="${product.name}" width="400" height="320" loading="${loadingAttr}" decoding="async"${fetchPriority} onerror="this.onerror=null; this.src='${product.thumbnail}';">
                     ${seasonBadge}
                 </div>
-                <div class="product-thumbnails" aria-label="Ảnh thu nhỏ">
+                <div class="product-thumbnails" aria-hidden="true">
                     ${thumbnailsHtml}
                 </div>
                 <div class="product-info">
@@ -99,15 +104,15 @@ function displayProducts(container, productsToDisplay = null) {
                 </div>
             </a>
         `;
-        
+
         container.appendChild(productCard);
     });
 }
 
 function getProductThumbnailImages(product) {
-    if (product.thumbnailImages && product.thumbnailImages.length) {
-        return product.thumbnailImages.slice(0, 3);
+    const gallery = getProductGalleryImages(product.id);
+    if (gallery.length >= 2) {
+        return gallery.slice(0, 3);
     }
-
     return [product.thumbnail];
-} 
+}

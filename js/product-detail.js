@@ -2,54 +2,50 @@ let currentImageIndex = 0;
 let productImages = [];
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Lấy ID sản phẩm từ URL
     const urlParams = new URLSearchParams(window.location.search);
     const productId = urlParams.get('id');
-    
-    if (productId) {
-        // Lấy thông tin sản phẩm
-        const product = getProductById(productId);
-        
-        if (product) {
-            // Hiển thị tên sản phẩm
-            document.getElementById('product-name').textContent = product.name;
-            document.title = product.name + ' - Phụ kiện Trung Thu';
-            
-            // Cập nhật meta tags
-            updateMetaTags(product);
-            
-            // Hiển thị thông tin giá và mô tả
-            displayProductInfo(product);
-            
-            // Lấy container hình ảnh
-            const imagesContainer = document.getElementById('product-images');
-            
-            // Hiển thị hình ảnh cho sản phẩm
-            loadProductImagesAdvanced(product, imagesContainer);
-            
-            // Hiển thị video nếu có
-            if (product.videos && product.videos.length > 0) {
-                const videoContainer = document.getElementById('product-videos');
-                if (videoContainer) {
-                    displayProductVideos(product, videoContainer);
-                }
-            }
-            
-            // Thiết lập sự kiện cho các nút điều hướng gallery
-            setupGalleryNavigation();
-        } else {
-            // Không tìm thấy sản phẩm
-            document.getElementById('product-name').textContent = 'Không tìm thấy sản phẩm';
-            document.getElementById('product-images').innerHTML = '<p>Không tìm thấy thông tin sản phẩm.</p>';
+
+    if (!productId) {
+        return;
+    }
+
+    const product = getProductById(productId);
+
+    if (!product) {
+        document.getElementById('product-name').textContent = 'Không tìm thấy sản phẩm';
+        const imagesContainer = document.getElementById('product-images');
+        if (imagesContainer) {
+            imagesContainer.innerHTML = '<p>Không tìm thấy thông tin sản phẩm.</p>';
+        }
+        return;
+    }
+
+    document.getElementById('product-name').textContent = product.name;
+    document.title = product.name + ' - Phụ kiện Trung Thu';
+
+    updateMetaTags(product);
+    displayProductInfo(product);
+
+    const imagesContainer = document.getElementById('product-images');
+    loadProductImages(product, imagesContainer);
+
+    if (product.videos && product.videos.length > 0) {
+        const videoContainer = document.getElementById('product-videos');
+        if (videoContainer) {
+            displayProductVideos(product, videoContainer);
         }
     }
+
+    setupGalleryNavigation();
 });
 
-// Hiển thị thông tin chi tiết sản phẩm
 function displayProductInfo(product) {
     const productInfoElement = document.getElementById('product-info');
-    if (productInfoElement) {
-        productInfoElement.innerHTML = `
+    if (!productInfoElement) {
+        return;
+    }
+
+    productInfoElement.innerHTML = `
             <div class="gallery-section">
                 <div class="gallery-container mb-6">
                     <div class="product-images" id="product-images"></div>
@@ -82,41 +78,38 @@ function displayProductInfo(product) {
                         Mua qua Shopee
                     </a>
                     <a href="https://zalo.me/0965671689" target="_blank" class="buy-button zalo-button">
-                        <img src="./image/zalo-hd-logo.png" alt="Zalo" class="w-5 h-5 mr-2">
+                        <img src="./image/zalo-hd-logo.png" alt="Zalo" class="w-5 h-5 mr-2" width="20" height="20" loading="lazy">
                         Liên hệ Zalo
                     </a>
                 </div>
             </div>
         `;
-    }
 }
 
-// Cập nhật meta tags cho SEO
 function updateMetaTags(product) {
-    // Cập nhật Open Graph meta tags
     const ogTitle = document.querySelector('meta[property="og:title"]');
     const ogDesc = document.querySelector('meta[property="og:description"]');
     const ogImage = document.querySelector('meta[property="og:image"]');
     const ogUrl = document.querySelector('meta[property="og:url"]');
-    
+
     const canonicalProductUrl = getCanonicalProductUrl(product);
     const canonicalImageUrl = getCanonicalAssetUrl(product.thumbnail);
-    
+    const canonicalLink = document.querySelector('link[rel="canonical"]');
+
     if (ogTitle) ogTitle.setAttribute('content', product.name);
     if (ogDesc) ogDesc.setAttribute('content', product.description);
     if (ogImage) ogImage.setAttribute('content', canonicalImageUrl);
     if (ogUrl) ogUrl.setAttribute('content', canonicalProductUrl);
-    
-    // Cập nhật Twitter Card meta tags
+    if (canonicalLink) canonicalLink.setAttribute('href', canonicalProductUrl);
+
     const twTitle = document.querySelector('meta[name="twitter:title"]');
     const twDesc = document.querySelector('meta[name="twitter:description"]');
     const twImage = document.querySelector('meta[name="twitter:image"]');
-    
+
     if (twTitle) twTitle.setAttribute('content', product.name);
     if (twDesc) twDesc.setAttribute('content', product.description);
     if (twImage) twImage.setAttribute('content', canonicalImageUrl);
-    
-    // Cập nhật JSON-LD
+
     const jsonLdScript = document.querySelector('script[type="application/ld+json"]');
     if (jsonLdScript) {
         try {
@@ -142,278 +135,152 @@ function getCanonicalAssetUrl(assetPath) {
     return `https://hopqua.github.io/${assetPath.replace(/^\.\//, '')}`;
 }
 
-// Hàm tự động phát hiện ảnh có sẵn trong thư mục
-async function detectAvailableImages(basePath, patterns, maxImages = 50) {
-    const availableImages = [];
-    
-    // Thử từng pattern để tìm ảnh
-    for (const pattern of patterns) {
-        for (let i = 1; i <= maxImages; i++) {
-            const imagePath = `${basePath}/${pattern.replace('%d', i)}`;
-            
-            // Tạo một promise để check xem ảnh có tồn tại không
-            const imageExists = await new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => resolve(true);
-                img.onerror = () => resolve(false);
-                img.src = imagePath;
-                
-                // Timeout sau 2 giây để tránh pending request quá lâu
-                setTimeout(() => resolve(false), 2000);
-            });
-            
-            if (imageExists) {
-                availableImages.push(imagePath);
-            } else {
-                // Nếu không tìm thấy ảnh liên tiếp, break khỏi loop này
-                if (i > 3) break; // Chỉ break nếu đã thử ít nhất 3 ảnh
-            }
-        }
+function resolveGalleryPaths(product) {
+    const paths = [];
+
+    if (product.videos && product.videos.length) {
+        paths.push(...product.videos);
     }
-    
-    return availableImages;
+
+    const manifest = getProductGalleryImages(product.id);
+    if (manifest.length) {
+        paths.push(...manifest);
+        return paths;
+    }
+
+    paths.push(...buildFallbackImagePaths(product));
+    return paths;
 }
 
-// Hàm tải hình ảnh sản phẩm được cải thiện
-async function loadProductImagesAdvanced(product, container) {
-    // Reset mảng hình ảnh
-    productImages = [];
-    currentImageIndex = 0;
-    
-    // Xóa nội dung cũ
-    container.innerHTML = '<div class="loading">Đang tải ảnh...</div>';
-    
-    // Thêm video vào gallery nếu có
-    if (product.videos && product.videos.length > 0) {
-        product.videos.forEach(videoPath => {
-            productImages.push(videoPath);
-        });
-    }
-    
-    let imagePatterns = [];
+function buildFallbackImagePaths(product) {
     const basePath = `image/${product.folder}`;
-    
-    // Xác định patterns dựa trên loại sản phẩm
-    if (product.id === 'hop-lam-cuc-4-6-banh') {
-        imagePatterns = [
-            'hop-lam-cuc-4-6-banh-%d.jpg',
-            'vo-hop-trung-thu-lam-cuc-4-banh-tra-6-banh-them-anh-%d.jpg'
-        ];
-    } else if (product.folder && product.folder.includes('vo-hop-banh-trung-thu-1-banh-lan-djo-tho-trang-3-5-7k')) {
-        const folderParts = product.folder.split('/');
-        const subFolder = folderParts[folderParts.length - 1];
-        imagePatterns = [`${subFolder}-%d.jpg`];
-    } else if (product.folder && product.folder.includes('18-06-2025')) {
-        const folderParts = product.folder.split('/');
-        const subFolder = folderParts[folderParts.length - 1];
-        imagePatterns = [`${subFolder}-%d.jpg`];
-    } else if (product.id === 'tui-dung-banh-trung-thu-sz-9-10-11') {
-        // Sử dụng danh sách cố định cho sản phẩm này
-        const imageNumbers = [3, 4, 5, 6, 12, 13, 14, 15, 16, 17, 18];
-        imageNumbers.forEach(number => {
-            productImages.push(`${basePath}/tui-dung-banh-trung-thu-sz-91011-${number}.jpg`);
+    const result = [];
+
+    if (product.id === 'tui-dung-banh-trung-thu-sz-9-10-11') {
+        [3, 4, 5, 6, 12, 13, 14, 15, 16, 17, 18].forEach((n) => {
+            result.push(`${basePath}/tui-dung-banh-trung-thu-sz-91011-${n}.jpg`);
         });
-    } else if (product.id === 'hoa-vien-do-4-banh-re') {
-        const imageNumbers = [1, 2, 3, 4];
-        imageNumbers.forEach(number => {
-            productImages.push(`${basePath}/hoa-vien-do-4-banh-re-${number}.jpg`);
-        });
-    } else {
-        // Pattern mặc định
-        imagePatterns = [`${product.id}-%d.jpg`];
+        return result;
     }
-    
-    // Tự động phát hiện ảnh nếu có patterns
-    if (imagePatterns.length > 0) {
-        try {
-            const detectedImages = await detectAvailableImages(basePath, imagePatterns);
-            productImages.push(...detectedImages);
-        } catch (error) {
-            // Fallback về phương pháp cũ
-            loadProductImagesOldMethod(product);
-            return;
+
+    if (product.id === 'hoa-vien-do-4-banh-re') {
+        [1, 2, 3, 4].forEach((n) => result.push(`${basePath}/hoa-vien-do-4-banh-re-${n}.jpg`));
+        return result;
+    }
+
+    if (product.id === 'hop-lam-cuc-4-6-banh') {
+        for (let i = 1; i <= 5; i++) result.push(`${basePath}/hop-lam-cuc-4-6-banh-${i}.jpg`);
+        for (let i = 1; i <= 22; i++) {
+            result.push(`${basePath}/vo-hop-trung-thu-lam-cuc-4-banh-tra-6-banh-them-anh-${i}.jpg`);
+        }
+        return result;
+    }
+
+    const folderParts = product.folder.split('/');
+    const subFolder = folderParts[folderParts.length - 1];
+    const max = product.folder.includes('18-06-2025') || product.folder.includes('26-5-2026') ? 15 : 12;
+
+    for (let i = 1; i <= max; i++) {
+        result.push(`${basePath}/${subFolder}-${i}.jpg`);
+    }
+
+    if (!product.folder.includes('/')) {
+        for (let i = 1; i <= max; i++) {
+            result.push(`${basePath}/${product.id}-${i}.jpg`);
         }
     }
-    
-    // Xóa thông báo loading
+
+    return result;
+}
+
+function loadProductImages(product, container) {
+    productImages = resolveGalleryPaths(product);
+    currentImageIndex = 0;
+
+    if (!container) {
+        return;
+    }
+
     container.innerHTML = '';
-    
-    // Xóa chỉ báo cũ
+
     const indicatorsContainer = document.getElementById('gallery-indicators');
     if (indicatorsContainer) {
         indicatorsContainer.innerHTML = '';
     }
-    
-    // Hiển thị ảnh đầu tiên
+
     if (productImages.length > 0) {
         displayImage(0);
     } else {
         container.innerHTML = '<p>Không tìm thấy ảnh sản phẩm.</p>';
     }
-    
-    // Tạo chỉ báo ảnh
+
     createGalleryIndicators();
 }
 
-// Hàm tải ảnh theo phương pháp cũ (dự phòng)
-function loadProductImagesOldMethod(product) {
-    // Reset mảng hình ảnh
-    productImages = [];
-    currentImageIndex = 0;
-    
-    const container = document.getElementById('product-images');
-    if (container) container.innerHTML = '';
-    
-    // Thêm video vào gallery nếu có
-    if (product.videos && product.videos.length > 0) {
-        product.videos.forEach(videoPath => {
-            productImages.push(videoPath);
-        });
-    }
-    
-    // Xóa chỉ báo cũ
-    const indicatorsContainer = document.getElementById('gallery-indicators');
-    if (indicatorsContainer) {
-        indicatorsContainer.innerHTML = '';
-    }
-    
-    // Trường hợp đặc biệt cho sản phẩm túi đựng bánh trung thu
-    if (product.id === 'tui-dung-banh-trung-thu-sz-9-10-11') {
-        const imageNumbers = [3, 4, 5, 6, 12, 13, 14, 15, 16, 17, 18];
-        imageNumbers.forEach(number => {
-            const imagePath = `image/${product.folder}/tui-dung-banh-trung-thu-sz-91011-${number}.jpg`;
-            productImages.push(imagePath);
-        });
-    }
-    // Trường hợp đặc biệt cho sản phẩm hoa viên đỏ
-    else if (product.id === 'hoa-vien-do-4-banh-re') {
-        const imageNumbers = [1, 2, 3, 4];
-        imageNumbers.forEach(number => {
-            const imagePath = `image/${product.folder}/hoa-vien-do-4-banh-re-${number}.jpg`;
-            productImages.push(imagePath);
-        });
-    }
-    // Trường hợp đặc biệt cho sản phẩm hộp lam cúc
-    else if (product.id === 'hop-lam-cuc-4-6-banh') {
-        // Thêm ảnh gốc
-        for (let i = 1; i <= 5; i++) {
-            const imagePath = `image/${product.folder}/hop-lam-cuc-4-6-banh-${i}.jpg`;
-            productImages.push(imagePath);
-        }
-        // Thêm ảnh mới từ vo-hop-trung-thu-lam-cuc-4-banh-tra-6-banh-them-anh-1 đến 22
-        for (let i = 1; i <= 22; i++) {
-            const imagePath = `image/${product.folder}/vo-hop-trung-thu-lam-cuc-4-banh-tra-6-banh-them-anh-${i}.jpg`;
-            productImages.push(imagePath);
-        }
-    }
-    // Trường hợp đặc biệt cho các sản phẩm trong vo-hop-banh-trung-thu-1-banh-lan-djo-tho-trang-3-5-7k
-    else if (product.folder && product.folder.includes('vo-hop-banh-trung-thu-1-banh-lan-djo-tho-trang-3-5-7k')) {
-        const folderParts = product.folder.split('/');
-        const subFolder = folderParts[folderParts.length - 1];
-        
-        for (let i = 1; i <= 15; i++) {
-            const imagePath = `image/${product.folder}/${subFolder}-${i}.jpg`;
-            productImages.push(imagePath);
-        }
-    }
-    // Trường hợp đặc biệt cho các sản phẩm trong 18-06-2025
-    else if (product.folder && product.folder.includes('18-06-2025')) {
-        const folderParts = product.folder.split('/');
-        const subFolder = folderParts[folderParts.length - 1];
-        
-        for (let i = 1; i <= 20; i++) {
-            const imagePath = `image/${product.folder}/${subFolder}-${i}.jpg`;
-            productImages.push(imagePath);
-        }
-    }
-    // Mặc định cho các sản phẩm khác
-    else {
-        const maxImages = 20;
-        const imageFolderPath = `image/${product.folder}`;
-        const productNameSlug = product.id;
-        
-        for (let i = 1; i <= maxImages; i++) {
-            const imagePath = `${imageFolderPath}/${productNameSlug}-${i}.jpg`;
-            productImages.push(imagePath);
-        }
-    }
-    
-    // Hiển thị ảnh đầu tiên
-    if (productImages.length > 0) {
-        displayImage(0);
-    }
-    
-    // Tạo chỉ báo ảnh
-    createGalleryIndicators();
-}
-
-// Hiển thị một ảnh cụ thể
 function displayImage(index) {
     if (index < 0 || index >= productImages.length) {
         return;
     }
-    
+
     currentImageIndex = index;
-    
-    // Cập nhật counter
+
     const counterElement = document.getElementById('gallery-counter');
     if (counterElement) {
         counterElement.textContent = `${index + 1} / ${productImages.length}`;
     }
-    
+
     const imagesContainer = document.getElementById('product-images');
-    if (imagesContainer) {
-        const src = productImages[index];
-        imagesContainer.innerHTML = '';
-        if (src.match(/\.(mp4|webm)$/i)) {
-            const video = document.createElement('video');
-            video.controls = true;
-            video.preload = 'metadata';
-            video.className = 'video-player';
-            const source = document.createElement('source');
-            source.src = src;
-            source.type = 'video/mp4';
-            video.appendChild(source);
-            imagesContainer.appendChild(video);
-        } else {
-            const img = document.createElement('img');
-            img.src = src;
-            img.alt = `Sản phẩm - Hình ${index + 1}`;
-            img.className = 'product-image';
-            img.onerror = function() {
-                // Xóa ảnh lỗi khỏi mảng và hiển thị ảnh tiếp theo
-                productImages.splice(index, 1);
-                if (productImages.length > 0) {
-                    const newIndex = index % productImages.length;
-                    displayImage(newIndex);
-                    createGalleryIndicators();
-                } else {
-                    imagesContainer.innerHTML = '<p>Không có phương tiện.</p>';
-                }
-            };
-            img.onload = function() {
-                img.addEventListener('click', function() {
-                    openLightbox(src, `Sản phẩm - phương tiện ${index + 1}`);
-                });
-            };
-            imagesContainer.appendChild(img);
-        }
-        // Cập nhật chỉ báo
-        updateGalleryIndicators(index);
-        
-        // Scroll thumbnail vào view
-        scrollThumbnailIntoView(index);
+    if (!imagesContainer) {
+        return;
     }
+
+    const src = productImages[index];
+    imagesContainer.innerHTML = '';
+
+    if (src.match(/\.(mp4|webm)$/i)) {
+        const video = document.createElement('video');
+        video.controls = true;
+        video.preload = 'metadata';
+        video.className = 'video-player';
+        const source = document.createElement('source');
+        source.src = src;
+        source.type = 'video/mp4';
+        video.appendChild(source);
+        imagesContainer.appendChild(video);
+    } else {
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = `Sản phẩm - Hình ${index + 1}`;
+        img.className = 'product-image';
+        img.width = 800;
+        img.height = 600;
+        img.decoding = 'async';
+        img.fetchPriority = index === 0 ? 'high' : 'auto';
+        img.onerror = function() {
+            productImages.splice(index, 1);
+            if (productImages.length > 0) {
+                displayImage(index % productImages.length);
+                createGalleryIndicators();
+            } else {
+                imagesContainer.innerHTML = '<p>Không có phương tiện.</p>';
+            }
+        };
+        img.addEventListener('click', function() {
+            openLightbox(src, `Sản phẩm - phương tiện ${index + 1}`);
+        });
+        imagesContainer.appendChild(img);
+    }
+
+    updateGalleryIndicators(index);
+    scrollThumbnailIntoView(index);
 }
 
-// Scroll thumbnail vào view
 function scrollThumbnailIntoView(index) {
     const indicatorsContainer = document.getElementById('gallery-indicators');
     const thumbnails = indicatorsContainer?.children;
-    
+
     if (thumbnails && thumbnails[index]) {
-        const thumbnail = thumbnails[index];
-        thumbnail.scrollIntoView({
+        thumbnails[index].scrollIntoView({
             behavior: 'smooth',
             inline: 'center',
             block: 'nearest'
@@ -421,98 +288,122 @@ function scrollThumbnailIntoView(index) {
     }
 }
 
-// Tạo các chỉ báo cho gallery
 function createGalleryIndicators() {
     const indicatorsContainer = document.getElementById('gallery-indicators');
     if (!indicatorsContainer) return;
-    
+
     indicatorsContainer.innerHTML = '';
-    
-    // Nếu có nhiều hơn 1 ảnh mới hiển thị gallery
+
     if (productImages.length <= 1) {
         indicatorsContainer.style.display = 'none';
         return;
     }
-    
+
     indicatorsContainer.style.display = 'flex';
-    
-    // Tạo loading placeholder cho từng thumbnail
+
     productImages.forEach((src, index) => {
         const thumbContainer = document.createElement('div');
         thumbContainer.className = 'thumb-container';
-        thumbContainer.style.position = 'relative';
-        thumbContainer.style.display = 'inline-block';
-        
+
+        if (src.match(/\.(mp4|webm)$/i)) {
+            const badge = document.createElement('span');
+            badge.className = 'thumb-video-badge';
+            badge.textContent = '▶';
+            badge.title = 'Video';
+            thumbContainer.appendChild(badge);
+            thumbContainer.addEventListener('click', () => displayImage(index));
+            indicatorsContainer.appendChild(thumbContainer);
+            return;
+        }
+
         const thumb = document.createElement('img');
-        // Use corresponding .jpg for video thumbnails, else use src
-        const thumbSrc = src.match(/\.(mp4|webm)$/i)
-            ? src.replace(/\.(mp4|webm)$/i, '.jpg')
-            : src;
-        
-        thumb.src = thumbSrc;
+        thumb.dataset.fullSrc = src;
+        thumb.dataset.loaded = 'false';
         thumb.alt = `Thumbnail ${index + 1}`;
         thumb.title = `Xem ảnh ${index + 1}`;
-        
-        // Thêm loading animation
-        thumb.style.opacity = '0';
-        thumb.style.transition = 'opacity 0.3s ease';
-        
+        thumb.width = 80;
+        thumb.height = 80;
+        thumb.loading = 'lazy';
+        thumb.decoding = 'async';
+
         if (index === currentImageIndex) {
             thumb.classList.add('active');
         }
-        
-        thumb.addEventListener('click', () => {
-            displayImage(index);
-        });
-        
-        thumb.onload = function() {
-            this.style.opacity = '1';
-        };
-        
-        thumb.onerror = function() {
-            // Ẩn thumbnail nếu ảnh không tồn tại
-            thumbContainer.style.display = 'none';
-        };
-        
-        // Thêm số thứ tự cho thumbnail
-        const thumbNumber = document.createElement('div');
-        thumbNumber.className = 'thumb-number';
-        thumbNumber.textContent = index + 1;
-        thumbNumber.style.cssText = `
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            font-size: 10px;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-weight: bold;
-            z-index: 1;
-        `;
-        
+
+        thumb.addEventListener('click', () => displayImage(index));
         thumbContainer.appendChild(thumb);
-        thumbContainer.appendChild(thumbNumber);
         indicatorsContainer.appendChild(thumbContainer);
     });
-    
-    // Gallery indicators ready
+
+    loadVisibleGalleryThumbs();
+    setupGalleryThumbObserver();
 }
 
-// Cập nhật trạng thái active của các chỉ báo
+let galleryThumbObserver = null;
+
+function setupGalleryThumbObserver() {
+    const indicatorsContainer = document.getElementById('gallery-indicators');
+    if (!indicatorsContainer || galleryThumbObserver) {
+        return;
+    }
+
+    galleryThumbObserver = new IntersectionObserver(
+        (entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    loadGalleryThumbImg(entry.target);
+                }
+            });
+        },
+        { root: indicatorsContainer, rootMargin: '80px' }
+    );
+
+    indicatorsContainer.querySelectorAll('img[data-full-src]').forEach((img) => {
+        galleryThumbObserver.observe(img);
+    });
+}
+
+function loadVisibleGalleryThumbs() {
+    const indicatorsContainer = document.getElementById('gallery-indicators');
+    if (!indicatorsContainer) return;
+
+    indicatorsContainer.querySelectorAll('img[data-full-src]').forEach((img) => {
+        const rect = img.getBoundingClientRect();
+        const parentRect = indicatorsContainer.getBoundingClientRect();
+        if (rect.right >= parentRect.left - 100 && rect.left <= parentRect.right + 100) {
+            loadGalleryThumbImg(img);
+        }
+    });
+
+    const active = indicatorsContainer.querySelector('img.active[data-full-src]');
+    if (active) {
+        loadGalleryThumbImg(active);
+    }
+}
+
+function loadGalleryThumbImg(thumb) {
+    if (thumb.dataset.loaded === 'true') {
+        return;
+    }
+    thumb.dataset.loaded = 'true';
+    thumb.src = getThumbUrl(thumb.dataset.fullSrc);
+    thumb.onerror = function() {
+        thumb.src = thumb.dataset.fullSrc;
+    };
+}
+
 function updateGalleryIndicators(activeIndex) {
     const indicatorsContainer = document.getElementById('gallery-indicators');
     if (!indicatorsContainer) return;
-    
+
     const thumbContainers = indicatorsContainer.children;
-    
+
     for (let i = 0; i < thumbContainers.length; i++) {
-        const thumbContainer = thumbContainers[i];
-        const thumb = thumbContainer.querySelector('img');
-        
+        const thumb = thumbContainers[i].querySelector('img');
         if (thumb) {
             if (i === activeIndex) {
                 thumb.classList.add('active');
+                loadGalleryThumbImg(thumb);
             } else {
                 thumb.classList.remove('active');
             }
@@ -520,20 +411,18 @@ function updateGalleryIndicators(activeIndex) {
     }
 }
 
-// Thiết lập các sự kiện cho nút điều hướng gallery
 function setupGalleryNavigation() {
     const prevButton = document.getElementById('gallery-prev');
     const nextButton = document.getElementById('gallery-next');
-    
+
     if (prevButton) {
         prevButton.addEventListener('click', navigatePrevImage);
     }
-    
+
     if (nextButton) {
         nextButton.addEventListener('click', navigateNextImage);
     }
-    
-    // Thêm điều hướng bằng bàn phím
+
     document.addEventListener('keydown', function(e) {
         if (e.key === 'ArrowLeft') {
             navigatePrevImage();
@@ -543,7 +432,6 @@ function setupGalleryNavigation() {
     });
 }
 
-// Chuyển đến ảnh trước
 function navigatePrevImage() {
     let newIndex = currentImageIndex - 1;
     if (newIndex < 0) {
@@ -552,7 +440,6 @@ function navigatePrevImage() {
     displayImage(newIndex);
 }
 
-// Chuyển đến ảnh tiếp theo
 function navigateNextImage() {
     let newIndex = currentImageIndex + 1;
     if (newIndex >= productImages.length) {
@@ -561,89 +448,67 @@ function navigateNextImage() {
     displayImage(newIndex);
 }
 
-// Hàm hiển thị video sản phẩm
 function displayProductVideos(product, container) {
-    // Xóa nội dung cũ
     container.innerHTML = '';
-    
-    // Nếu không có video, ẩn container
+
     if (!product.videos || product.videos.length === 0) {
         container.style.display = 'none';
         return;
     }
-    
-    // Hiển thị container nếu có video
+
     container.style.display = 'block';
-    
-    // Hiển thị từng video
-    product.videos.forEach((videoPath, index) => {
+
+    product.videos.forEach((videoPath) => {
         const videoDiv = document.createElement('div');
         videoDiv.className = 'product-video';
-        
+
         const video = document.createElement('video');
         video.controls = true;
         video.preload = 'metadata';
         video.className = 'video-player';
-        
-        // Xử lý lỗi nếu video không tồn tại
+
         video.onerror = function() {
             videoDiv.remove();
         };
-        
-        // Thêm nguồn video
+
         const source = document.createElement('source');
         source.src = videoPath;
         source.type = 'video/mp4';
-        
+
         video.appendChild(source);
-        
-        // Thêm thông báo nếu trình duyệt không hỗ trợ video
-        const fallback = document.createElement('p');
-        fallback.textContent = 'Trình duyệt của bạn không hỗ trợ xem video.';
-        video.appendChild(fallback);
-        
+        video.appendChild(document.createTextNode('Trình duyệt của bạn không hỗ trợ xem video.'));
         videoDiv.appendChild(video);
         container.appendChild(videoDiv);
     });
 }
 
-// Hàm mở lightbox khi click vào ảnh
 function openLightbox(imageSrc, imageAlt) {
-    // Tạo overlay lightbox
     const lightbox = document.createElement('div');
     lightbox.className = 'lightbox';
-    
+
     lightbox.innerHTML = `
         <div class="lightbox-content">
             <span class="close-lightbox">&times;</span>
-            <img src="${imageSrc}" alt="${imageAlt}">
+            <img src="${imageSrc}" alt="${imageAlt}" width="1200" height="900" decoding="async">
         </div>
     `;
-    
-    // Thêm lightbox vào body
+
     document.body.appendChild(lightbox);
-    
-    // Hiển thị lightbox
+
     setTimeout(() => {
         lightbox.style.opacity = '1';
     }, 50);
-    
-    // Xử lý sự kiện đóng lightbox
-    const closeLightbox = lightbox.querySelector('.close-lightbox');
-    closeLightbox.addEventListener('click', function() {
+
+    const closeBtn = lightbox.querySelector('.close-lightbox');
+    closeBtn.addEventListener('click', function() {
         lightbox.style.opacity = '0';
-        setTimeout(() => {
-            lightbox.remove();
-        }, 300);
+        setTimeout(() => lightbox.remove(), 300);
     });
-    
-    // Đóng lightbox khi click ra ngoài
+
     lightbox.addEventListener('click', function(e) {
         if (e.target === lightbox) {
             lightbox.style.opacity = '0';
-            setTimeout(() => {
-                lightbox.remove();
-            }, 300);
+            setTimeout(() => lightbox.remove(), 300);
         }
     });
-} 
+}

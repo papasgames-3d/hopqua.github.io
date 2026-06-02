@@ -7,8 +7,8 @@
   <link rel="icon" href="/image/favicon.png" type="image/x-icon">
   <meta name="description" content="{{ site.description }}">
   <meta name="robots" content="index,follow">
+  <link rel="canonical" href="{{ site.url }}{{ page.url | replace:'index.html','' }}">
   <link rel="stylesheet" href="/css/styles.css">
-  <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @keyframes pulse-ring {
         0% {
@@ -192,7 +192,7 @@
         
         <!-- Divider và Copyright -->
         <div class="border-t border-gray-600 mt-10 pt-6 text-center">
-            <p class="text-gray-300">&copy; 2025 <span class="text-white font-medium">{{ site.title }}</span>. Tất cả quyền được bảo lưu.</p>
+            <p class="text-gray-300">&copy; 2026 <span class="text-white font-medium">{{ site.title }}</span>. Tất cả quyền được bảo lưu.</p>
         </div>
     </div>
   </footer>
@@ -220,7 +220,7 @@
           
           <!-- Nút Messenger -->
           <a href="https://m.me/van.453776" target="_blank" 
-             class="relative flex items-center justify-center bg-[#0084ff] hover:bg-[#0066cc] text-white font-medium rounded-full w-16 h-16 shadow-lg transition-all duration-300 hover:scale-110">
+             class="relative flex items-center justify-center bg-messenger hover-bg-messenger text-white font-medium rounded-full w-16 h-16 shadow-lg transition-all duration-300 hover:scale-110">
               <span class="sr-only">Chat với chúng tôi qua Messenger</span>
               <svg class="w-8 h-8 chat-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M14 2.042C7.483 2.042 2.042 7.058 2.042 13.417C2.042 16.633 3.375 19.513 5.558 21.558V25.375L9.292 23.208C10.767 23.758 12.35 24.083 14 24.083C20.517 24.083 25.958 19.067 25.958 12.708C25.958 6.35 20.517 2.042 14 2.042ZM15.3 16.308L12.6 13.417L7.483 16.308L13.067 10.458L15.767 13.35L20.883 10.458L15.3 16.308Z" fill="white"/>

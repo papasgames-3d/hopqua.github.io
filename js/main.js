@@ -1,73 +1,83 @@
-// Phân trang cho sản phẩm nổi bật theo mùa
-const productsPerPage = 12;
-let currentPage = 1;
-let featuredProducts = [];
+document.addEventListener('DOMContentLoaded', function () {
+    const catalogRoot = document.getElementById('product-catalog');
+    if (!catalogRoot) return;
 
-function renderPage(page) {
-    currentPage = page;
-    const productListElement = document.getElementById('product-list');
-    const paginationElement = document.getElementById('pagination');
-    if (!featuredProducts.length) return;
+    const sections = getCatalogSections();
+    let globalIndex = 0;
 
-    const startIdx = (currentPage - 1) * productsPerPage;
-    const endIdx = startIdx + productsPerPage;
-    const productsToShow = featuredProducts.slice(startIdx, endIdx);
+    sections.forEach((section) => {
+        const sectionEl = document.createElement('section');
+        sectionEl.className = 'catalog-section';
+        sectionEl.id = section.id;
 
-    productListElement.innerHTML = '';
-    displayProducts(productListElement, productsToShow, startIdx);
-    renderPagination(paginationElement, featuredProducts.length, currentPage, productsPerPage);
+        const subtitleHtml = section.subtitle
+            ? `<p class="catalog-section-subtitle">${section.subtitle}</p>`
+            : '';
 
-    const featuredSection = document.querySelector('.featured-products');
-    if (featuredSection) {
-        featuredSection.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-        });
+        sectionEl.innerHTML = `
+            <h2 class="catalog-section-title">${section.title}</h2>
+            ${subtitleHtml}
+            <div class="product-grid" role="list"></div>
+        `;
+
+        const grid = sectionEl.querySelector('.product-grid');
+        displayProducts(grid, section.products, globalIndex);
+        globalIndex += section.products.length;
+
+        catalogRoot.appendChild(sectionEl);
+    });
+
+    const firstProduct = sections[0] && sections[0].products[0];
+    if (firstProduct && firstProduct.thumbnail) {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'image';
+        link.href = getThumbUrl(firstProduct.thumbnail);
+        document.head.appendChild(link);
     }
-}
 
-function renderPagination(container, totalProducts, page, perPage) {
-    const totalPages = Math.ceil(totalProducts / perPage);
-    if (totalPages <= 1) {
-        container.innerHTML = '';
-        return;
+    setupTierNav();
+
+    const ctaZalo = document.getElementById('cta-zalo-main');
+    if (ctaZalo) {
+        ctaZalo.addEventListener('click', () => trackZaloClick(null));
     }
-    let html = '';
-    for (let i = 1; i <= totalPages; i++) {
-        html += `<button class="pagination-btn${i === page ? ' active' : ''}" onclick="renderPage(${i})">${i}</button> `;
-    }
-    container.innerHTML = html;
-}
 
-window.renderPage = renderPage;
-
-document.addEventListener('DOMContentLoaded', function() {
-    const productListElement = document.getElementById('product-list');
-
-    if (productListElement) {
-        featuredProducts = getFeaturedProducts(9999);
-        renderPage(1);
-
-        if (featuredProducts[0] && featuredProducts[0].thumbnail) {
-            const link = document.createElement('link');
-            link.rel = 'preload';
-            link.as = 'image';
-            link.href = getThumbUrl(featuredProducts[0].thumbnail);
-            document.head.appendChild(link);
-        }
+    const headerZalo = document.querySelector('.header-nav-zalo');
+    if (headerZalo) {
+        headerZalo.addEventListener('click', () => trackZaloClick(null));
     }
 });
 
-function displayProducts(container, productsToDisplay, globalStartIndex = 0) {
-    const productsToShow = productsToDisplay || getAllProducts();
+function setupTierNav() {
+    const nav = document.getElementById('catalog-nav');
+    if (!nav) return;
 
-    productsToShow.forEach((product, localIndex) => {
+    nav.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+        anchor.addEventListener('click', (e) => {
+            const target = document.querySelector(anchor.getAttribute('href'));
+            if (target) {
+                e.preventDefault();
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
+}
+
+function displayProducts(container, productsToDisplay, globalStartIndex = 0) {
+    if (!container || !productsToDisplay.length) return;
+
+    productsToDisplay.forEach((product, localIndex) => {
         const globalIndex = globalStartIndex + localIndex;
         const cardThumb = getThumbUrl(product.thumbnail);
         const isPriority = globalIndex < 4;
+        const badges = getProductBadges(product);
+        const zaloUrl = buildZaloUrl(product);
+        const detailUrl = `product.html?id=${encodeURIComponent(product.id)}`;
 
-        const productCard = document.createElement('div');
+        const productCard = document.createElement('article');
         productCard.className = 'product-card';
+        productCard.setAttribute('role', 'listitem');
 
         if (product.season) {
             productCard.classList.add(`season-${product.season.replace(/\s+/g, '-')}`);
@@ -85,25 +95,39 @@ function displayProducts(container, productsToDisplay, globalStartIndex = 0) {
             ? `<span class="season-badge season-${product.season.replace(' ', '-')}">${product.season === 'trung thu' ? 'Trung Thu' : 'Tết'}</span>`
             : '';
 
+        const badgesHtml = badges
+            .map((b) => `<span class="product-badge ${b.className}">${b.label}</span>`)
+            .join('');
+
         const loadingAttr = isPriority ? 'eager' : 'lazy';
         const fetchPriority = isPriority ? ' fetchpriority="high"' : '';
+        const shortDesc =
+            product.description.length > 72
+                ? product.description.substring(0, 72) + '…'
+                : product.description;
 
         productCard.innerHTML = `
-            <a href="product.html?id=${product.id}">
+            <a href="${detailUrl}" class="product-card-link">
                 <div class="product-image-container">
                     <img src="${cardThumb}" alt="${product.name}" width="400" height="320" loading="${loadingAttr}" decoding="async"${fetchPriority} onerror="this.onerror=null; this.src='${product.thumbnail}';">
                     ${seasonBadge}
+                    ${badgesHtml ? `<div class="product-badges">${badgesHtml}</div>` : ''}
                 </div>
-                <div class="product-thumbnails" aria-hidden="true">
-                    ${thumbnailsHtml}
-                </div>
+                <div class="product-thumbnails" aria-hidden="true">${thumbnailsHtml}</div>
                 <div class="product-info">
                     <h3>${product.name}</h3>
                     <p class="product-price">${product.price}</p>
-                    <p class="product-short-desc">${product.description.substring(0, 80)}${product.description.length > 80 ? '...' : ''}</p>
+                    <p class="product-short-desc">${shortDesc}</p>
                 </div>
             </a>
+            <div class="product-card-actions">
+                <a href="${detailUrl}" class="btn-detail">Xem mẫu</a>
+                <a href="${zaloUrl}" target="_blank" rel="noopener" class="btn-zalo-card" data-product-id="${product.id}">Zalo báo giá</a>
+            </div>
         `;
+
+        const zaloBtn = productCard.querySelector('.btn-zalo-card');
+        zaloBtn.addEventListener('click', () => trackZaloClick(product));
 
         container.appendChild(productCard);
     });
